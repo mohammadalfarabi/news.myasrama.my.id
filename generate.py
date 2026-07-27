@@ -26,53 +26,59 @@ def dapatkan_potongan_teks(text, length=160):
     if len(clean_text) <= length:
         return clean_text
     return clean_text[:length].rsplit(' ', 1)[0] + '...'
+
 def fetch_all_news():
     """
-    Mengambil data berita dengan menyamar menggunakan User-Agent khusus
-    yang telah diberi izin lolos bypass di WAF Cloudflare.
+    Mengambil data berita dengan menyertakan User-Agent khusus (untuk Cloudflare)
+    dan Token Rahasia khusus (untuk verifikasi index.php).
     """
     all_news = []
     
+    # Mengambil token rahasia dari environment GitHub Actions
+    SECRET_TOKEN = os.environ.get("ASRAMA_NEWS_TOKEN", "")
+    
     try:
-        # PENTING: User-Agent ini harus sama persis dengan 'Value' di Cloudflare
+        # Mengirimkan User-Agent (Cloudflare) DAN Token Header (PHP) sekaligus
         headers = {
-            'User-Agent': 'AsramaBot-GitHub-Actions',
+            'User-Agent': 'AsramaBot-GitHub-Actions', 
+            'X-MyAsrama-Token': SECRET_TOKEN,
             'Accept': 'application/json'
         }
         
-        # Eksekusi langsung ke berkas index.php
         response = requests.get(API_NEWS_URL, headers=headers, timeout=15)
-        print(f"Status Cek Server (Cloudflare Bypass): {response.status_code}")
+        print(f"Status Cek Server: {response.status_code}")
         
         if response.status_code == 200:
             try:
                 raw_ids = response.json() 
             except Exception as json_err:
-                print(f"Gagal parsing JSON. Isi response: {response.text[:200]}")
+                print(f"Gagal memparsing JSON dari index.php: {json_err}. Isi response: {response.text[:200]}")
                 return all_news
 
             if not isinstance(raw_ids, list):
+                print(f"Format dari index.php tidak sesuai list, tipe: {type(raw_ids)}")
                 return all_news
                 
             news_ids = list(set([str(nid).strip() for nid in raw_ids if nid]))
-            print(f"Sukses! Terdeteksi {len(news_ids)} ID berita: {news_ids}")
+            print(f"Sistem mendeteksi {len(news_ids)} ID berita secara otomatis: {news_ids}")
             
             for nid in news_ids:
                 clean_id = nid.replace('.json', '')
                 target_url = f"{DATA_NEWS_URL}{clean_id}.json"
                 
                 try:
+                    # Pastikan saat mengambil data berkas .json juga mengirimkan header yang sama
                     res = requests.get(target_url, headers=headers, timeout=5)
                     if res.status_code == 200:
                         all_news.append(res.json())
                 except Exception as e:
-                    print(f"Gagal mengambil detail ID {clean_id}: {e}")
+                    print(f"Gagal mengunduh berita ID {clean_id}: {e}")
             
             return all_news
         else:
-            print(f"Cloudflare masih menghadang. Kode Status: {response.status_code}")
+            print(f"Gagal menembus server. Kode Status: {response.status_code}. Respon text: {response.text[:200]}")
             
     except Exception as e:
-        print(f"Error pada koneksi: {e}")
+        print(f"Error komunikasi: {e}")
 
     return all_news
