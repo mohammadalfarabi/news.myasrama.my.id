@@ -27,24 +27,35 @@ def dapatkan_potongan_teks(text, length=160):
 
 def fetch_all_news():
     """
-    Mengambil data dari endpoint utama. 
-    Catatan: Karena berupa folder file JSON, disarankan memiliki satu file manifest index.json 
-    atau memparsing daftar filenya. Kode ini mengasumsikan daftar ID didapatkan secara dinamis.
+    Otomatis mengecek dan mendeteksi sendiri semua file JSON yang ada 
+    lewat perantara index.php yang mengembalikan array JSON ID berita.
     """
     all_news = []
     
     try:
-        # Asumsi pertama: mencoba mengambil manifest index list berita jika tersedia
-        response = requests.get(f"{DATA_NEWS_URL}index.json", timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        # Panggil endpoint yang barusan kita buat
+        response = requests.get(DATA_NEWS_URL, headers=headers, timeout=15)
+        
         if response.status_code == 200:
-            news_ids = response.json() # Ekspektasi berupa array ID: [1785069910, ...]
+            # Karena index.php mengembalikan array JSON, langsung kita load
+            news_ids = response.json() 
+            print(f"Sistem mendeteksi {len(news_ids)} file berita secara otomatis: {news_ids}")
+            
+            # Download masing-masing data detail beritanya
             for nid in news_ids:
-                res = requests.get(f"{DATA_NEWS_URL}{nid}.json", timeout=5)
-                if res.status_code == 200:
-                    all_news.append(res.json())
+                try:
+                    res = requests.get(f"{DATA_NEWS_URL}{nid}.json", headers=headers, timeout=5)
+                    if res.status_code == 200:
+                        all_news.append(res.json())
+                except Exception as e:
+                    print(f"Gagal mendownload berita ID {nid}: {e}")
+            
             return all_news
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Gagal melakukan scanning folder berita otomatis: {e}")
+
+    return all_news
 
     # Fallback/Alternatif jika tidak ada index.json: 
     # Anda bisa menaruh daftar ID statis atau mem-parsing HTML directory listing jika diizinkan server
