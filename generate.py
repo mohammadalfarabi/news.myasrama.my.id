@@ -25,65 +25,41 @@ def dapatkan_potongan_teks(text, length=160):
     if len(clean_text) <= length:
         return clean_text
     return clean_text[:length].rsplit(' ', 1)[0] + '...'
-
+    
 def fetch_all_news():
     """
-    Mengambil data berita dengan menyertakan User-Agent khusus (untuk Cloudflare)
-    dan Token Rahasia khusus (untuk verifikasi index.php) disertai log pelacak.
+    Mengambil data berita langsung dari payload kiriman repositori dispatch 
+    sehingga 100% bebas dari blokir proteksi Cloudflare/InfinityFree.
     """
     all_news = []
-    SECRET_TOKEN = os.environ.get("ASRAMA_NEWS_TOKEN", "")
     
-    print("-> [LOG] Memulai fungsi fetch_all_news()...")
-    print(f"-> [LOG] Menembak URL: {API_NEWS_URL}")
+    # Mengambil data mentah dari env GitHub Actions
+    raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "")
     
+    print("-> [LOG] Memulai fungsi fetch_all_news() via Payload...")
+    
+    if not raw_payload or raw_payload == "null":
+        print("-> [WARNING] Tidak ada data payload terdeteksi. Berjalan dalam mode kosong/manual.")
+        return all_news
+        
     try:
-        headers = {
-            'User-Agent': 'AsramaBot-GitHub-Actions', 
-            'X-MyAsrama-Token': SECRET_TOKEN,
-            'Accept': 'application/json'
-        }
-        
-        print("-> [LOG] Mengirim request ke server... (Menunggu respon Cloudflare/Hosting)")
-        response = requests.get(API_NEWS_URL, headers=headers, timeout=15)
-        
-        print(f"-> [LOG] Status Cek Server Berhasil Diterima: {response.status_code}")
-        
-        if response.status_code == 200:
-            try:
-                raw_ids = response.json() 
-            except Exception as json_err:
-                print(f"-> [ERROR] Gagal memparsing JSON dari index.php: {json_err}.")
-                print(f"-> [ERROR] Isi response awal: {response.text[:500]}")
-                return all_news
-
-            if not isinstance(raw_ids, list):
-                print(f"-> [WARNING] Format dari index.php tidak sesuai list, tipe: {type(raw_ids)}")
-                return all_news
-                
-            news_ids = list(set([str(nid).strip() for nid in raw_ids if nid]))
-            print(f"-> [SUCCESS] Sistem mendeteksi {len(news_ids)} ID berita secara otomatis: {news_ids}")
+        # Karena data dikirim dalam bentuk string JSON ter-encode, kita decode di sini
+        import ast
+        # Bersihkan string membungkus jika ada double quotes dari YAML
+        if raw_payload.startswith('"') and raw_payload.endswith('"'):
+            raw_payload = json.loads(raw_payload)
             
-            for nid in news_ids:
-                clean_id = nid.replace('.json', '')
-                target_url = f"{DATA_NEWS_URL}{clean_id}.json"
-                
-                try:
-                    res = requests.get(target_url, headers=headers, timeout=5)
-                    if res.status_code == 200:
-                        all_news.append(res.json())
-                except Exception as e:
-                    print(f"-> [ERROR] Gagal mengunduh berita ID {clean_id}: {e}")
-            
-            return all_news
+        news_data = json.loads(raw_payload)
+        
+        if isinstance(news_data, list):
+            print(f"-> [SUCCESS] Berhasil memuat {len(news_data)} berita dari payload kiriman otomatis!")
+            return news_data
         else:
-            print(f"-> [BUNTU] Gagal menembus server. Kode Status: {response.status_code}")
-            print(f"-> [BUNTU] Isi potongan halaman penolakan: {response.text[:500]}")
+            print(f"-> [ERROR] Format data payload bukan list, melainkan: {type(news_data)}")
             
-    except requests.exceptions.Timeout:
-        print("-> [FATAL ERROR] Koneksi TIMEOUT! Server menggantung atau tidak merespon bot dalam 15 detik.")
     except Exception as e:
-        print(f"-> [FATAL ERROR] Terjadi kendala komunikasi: {e}")
+        print(f"-> [FATAL ERROR] Gagal membaca data payload: {e}")
+        print(f"-> Potongan data mentah yang gagal: {raw_payload[:200]}")
 
     return all_news
 
