@@ -2,14 +2,11 @@ import os
 import re
 import html
 import json
-import requests
 from datetime import datetime
 
-# Konfigurasi Alamat URL
+# Konfigurasi Alamat URL Asrama UTM
 URL_UTAMA = "https://myasrama.my.id"
 URL_PREVIEW = "https://news.myasrama.my.id"
-DATA_NEWS_URL = f"{URL_UTAMA}/data/berita/"
-API_NEWS_URL = f"{URL_UTAMA}/data/berita/index.php"
 IMAGE_BASE_URL = f"{URL_UTAMA}/upload/berita/"
 OUTPUT_DIR = "docs"
 
@@ -27,37 +24,27 @@ def dapatkan_potongan_teks(text, length=160):
     return clean_text[:length].rsplit(' ', 1)[0] + '...'
     
 def fetch_all_news():
-    """
-    Mengambil data berita langsung dari payload kiriman repositori dispatch 
-    sehingga 100% bebas dari blokir proteksi Cloudflare/InfinityFree.
-    """
+    """ Mengambil data berita langsung dari payload kiriman otomatis GitHub Actions """
     all_news = []
-    
-    # Mengambil data mentah dari env GitHub Actions
     raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "")
     
     print("-> [LOG] Memulai fungsi fetch_all_news() via Payload...")
     
     if not raw_payload or raw_payload == "null":
-        print("-> [WARNING] Tidak ada data payload terdeteksi. Berjalan dalam mode kosong/manual.")
+        print("-> [WARNING] Tidak ada data payload terdeteksi. Berjalan mode kosong.")
         return all_news
         
     try:
-        # Hubungkan string membungkus jika ada double quotes dari YAML
         if raw_payload.startswith('"') and raw_payload.endswith('"'):
             raw_payload = json.loads(raw_payload)
             
         news_data = json.loads(raw_payload)
         
         if isinstance(news_data, list):
-            print(f"-> [SUCCESS] Berhasil memuat {len(news_data)} berita dari payload kiriman otomatis!")
+            print(f"-> [SUCCESS] Berhasil memuat {len(news_data)} berita dari payload!")
             return news_data
-        else:
-            print(f"-> [ERROR] Format data payload bukan list, melainkan: {type(news_data)}")
-            
     except Exception as e:
         print(f"-> [FATAL ERROR] Gagal membaca data payload: {e}")
-        print(f"-> Potongan data mentah yang gagal: {raw_payload[:200]}")
 
     return all_news
 
@@ -87,8 +74,22 @@ def build_site():
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
         url_gambar_full = f"{IMAGE_BASE_URL}{gambar}"
         
-        # Penggantian manual menggunakan .replace() agar aman dari kurung kurawal CSS
+        # Merakit Meta Tag Open Graph secara dinamis untuk WhatsApp / Media Sosial
+        og_meta_tags = f"""
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{url_preview_artikel}">
+    <meta property="og:title" content="{html.escape(judul)}">
+    <meta property="og:description" content="{html.escape(potongan)}">
+    <meta property="og:image" content="{url_gambar_full}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{html.escape(judul)}">
+    <meta name="twitter:description" content="{html.escape(potongan)}">
+    <meta name="twitter:image" content="{url_gambar_full}">
+        """.strip()
+        
+        # Proses replacement template tanpa mengganggu kurung kurawal CSS
         html_rendered = template_content
+        html_rendered = html_rendered.replace("{og_meta}", og_meta_tags)
         html_rendered = html_rendered.replace("{judul}", html.escape(judul))
         html_rendered = html_rendered.replace("{deskripsi}", html.escape(potongan))
         html_rendered = html_rendered.replace("{url_preview}", url_preview_artikel)
@@ -132,18 +133,20 @@ def generate_index_page(items):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Asrama News - Preview Center</title>
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{URL_PREVIEW}/">
+    <meta property="og:title" content="My Asrama News - Preview Center">
+    <meta property="og:description" content="Portal direktori preview tautan berita resmi untuk lingkungan Asrama Universitas Trunojoyo Madura.">
     <style>
         body {{ font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }}
         h1 {{ color: #1e3a8a; }}
-        ul {{ padding-left: 20px; }}
-        li {{ margin-bottom: 10px; }}
         a {{ color: #2563eb; text-decoration: none; }}
-        a:hover {{ text-underline-offset: 3px; text-decoration: underline; }}
+        a:hover {{ text-decoration: underline; }}
     </style>
 </head>
 <body>
     <h1>My Asrama News</h1>
-    <p>Direktori preview tautan sosial media untuk My Asrama. Anda akan dialihkan secara otomatis ke platform utama saat membuka berita.</p>
+    <p>Direktori preview berita untuk sosial media Asrama UTM.</p>
     <hr>
     <h3>Berita Terbaru:</h3>
     <ul>
