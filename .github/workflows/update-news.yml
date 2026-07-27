@@ -24,9 +24,9 @@ jobs:
 
       - name: Run Static Site Generator via Payload
         env:
-          RAW_PAYLOAD_DATA: ${{ jsonEncode(github.event.client_payload.data_berita) }}
+          RAW_PAYLOAD_DATA: ${{ github.event.client_payload.data_berita }}
         run: |
-          # Kita buat skrip Python membaca data kiriman langsung dari env
+          # Membaca data kiriman langsung dari environment
           python generate.py
 
       - name: Deploy to GitHub Pages
