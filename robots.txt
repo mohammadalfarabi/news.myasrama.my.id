@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://news.myasrama.my.id/sitemap.xml
