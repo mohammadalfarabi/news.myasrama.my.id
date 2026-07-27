@@ -5,7 +5,7 @@ on:
     types: [update_berita_otomatis]
   workflow_dispatch:
 
-# Tambahkan izin akses tulis agar bot bisa melakukan commit dan push balik ke repo
+# Mengaktifkan izin akses tulis agar bot bisa melakukan commit & push balik ke repo
 permissions:
   contents: write
 
@@ -28,11 +28,11 @@ jobs:
 
       - name: Run Static Site Generator via Payload
         env:
-          RAW_PAYLOAD_DATA: ${{ json.encode(github.event.client_payload.data_berita) }}
+          RAW_PAYLOAD_DATA: ${{ github.event.client_payload.data_berita }}
         run: |
           python generate.py
 
-      # Mengganti peaceiris dengan Git Commit & Push langsung ke folder docs
+      # Meng-commit & push langsung folder docs/ yang di-update oleh generate.py
       - name: Commit and Push Changes back to Repository
         run: |
           git config --global user.name "github-actions[bot]"
