@@ -2,13 +2,11 @@ import os
 import re
 import html
 import json
-import requests
+import base64
 from datetime import datetime
 
-# Konfigurasi Alamat URL Asrama UTM
 URL_UTAMA = "https://myasrama.my.id"
 URL_PREVIEW = "https://news.myasrama.my.id"
-IMAGE_BASE_URL = f"{URL_UTAMA}/upload/berita/"
 OUTPUT_DIR = "docs"
 
 def buat_slug(text):
@@ -24,58 +22,43 @@ def dapatkan_potongan_teks(text, length=160):
         return clean_text
     return clean_text[:length].rsplit(' ', 1)[0] + '...'
 
-def download_gambar_ke_github(url_sumber, nama_file):
-    """ Mengunduh gambar dari InfinityFree dan menyimpannya ke dalam folder docs/images/ agar terbebas dari blokir anti-bot """
-    folder_gambar = os.path.join(OUTPUT_DIR, "images")
-    os.makedirs(folder_gambar, exist_ok=True)
-    path_tujuan = os.path.join(folder_gambar, nama_file)
-    
-    # Memberikan User-Agent palsu agar tidak diblokir saat diunduh oleh GitHub Actions
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    try:
-        print(f"-> [DOWNLOAD] Mencoba mengunduh gambar: {url_sumber}")
-        respon = requests.get(url_sumber, headers=headers, timeout=15)
-        if respon.status_code == 200:
-            with open(path_tujuan, "wb") as f:
-                f.write(respon.content)
-            print(f"-> [SUCCESS] Gambar berhasil disimpan ke GitHub: docs/images/{nama_file}")
-            return f"{URL_PREVIEW}/images/{nama_file}"
-        else:
-            print(f"-> [WARNING] Gagal mengunduh gambar. Kode Status: {respon.status_code}. Menggunakan fallback URL asal.")
-    except Exception as e:
-        print(f"-> [ERROR] Gagal mengunduh gambar karena: {e}")
-        
-    return url_sumber
-    
 def fetch_all_news():
     all_news = []
-    raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "")
-    
-    print("-> [LOG] Memulai fungsi fetch_all_news() via Payload...")
+    raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "").strip()
     
     if not raw_payload or raw_payload == "null":
-        print("-> [WARNING] Tidak ada data payload terdeteksi.")
+        print("Payload kosong atau bernilai null.")
         return all_news
         
     try:
+        # Penanganan ekstra jika data terbungkus string ganda oleh GitHub Environment
         if raw_payload.startswith('"') and raw_payload.endswith('"'):
-            raw_payload = json.loads(raw_payload)
-            
+            try:
+                raw_payload = json.loads(raw_payload)
+            except:
+                # Jika gagal loads sebagai string, bersihkan tanda kutip manual
+                raw_payload = raw_payload[1:-1].replace('\\"', '"').replace('\\\\', '\\')
+
         news_data = json.loads(raw_payload)
         
+        # Jika bungkus datanya berupa string JSON lagi di dalamnya
+        if isinstance(news_data, str):
+            news_data = json.loads(news_data)
+            
         if isinstance(news_data, list):
-            print(f"-> [SUCCESS] Berhasil memuat {len(news_data)} berita dari payload!")
+            print(f"Berhasil memuat {len(news_data)} data berita dari payload.")
             return news_data
+            
     except Exception as e:
-        print(f"-> [FATAL ERROR] Gagal membaca data payload: {e}")
-
+        print(f"Gagal memparsing payload berita: {e}")
+        # Cetak sedikit cuplikan payload untuk mempermudah debugging di log GitHub
+        print(f"Cuplikan awal payload: {raw_payload[:200]}")
     return all_news
 
 def build_site():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    folder_gambar = os.path.join(OUTPUT_DIR, "images")
+    os.makedirs(folder_gambar, exist_ok=True)
     
     with open("template.html", "r", encoding="utf-8") as f:
         template_content = f.read()
@@ -88,6 +71,7 @@ def build_site():
         judul = item.get("judul")
         tanggal = item.get("tanggal")
         gambar = item.get("gambar")
+        raw_image_base64 = item.get("raw_image", "") 
         isi = item.get("isi", "")
         
         if not judul or not nid:
@@ -98,12 +82,21 @@ def build_site():
         
         url_tujuan = f"{URL_UTAMA}/berita/detail.php?id={nid}"
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
-        url_gambar_sumber = f"{IMAGE_BASE_URL}{gambar}"
         
-        # PROSES FIX: Unduh gambar ke server GitHub Pages & ganti URL tujuannya menuju GitHub Pages
-        url_gambar_aman = download_gambar_ke_github(url_gambar_sumber, gambar)
+        # PROSES MERAKIT GAMBAR DARI BASE64
+        url_gambar_aman = f"{URL_UTAMA}/upload/berita/{gambar}" # Default fallback
+        if raw_image_base64:
+            try:
+                path_file_gambar = os.path.join(folder_gambar, gambar)
+                # Decode string base64 kembali menjadi file gambar biner
+                image_bytes = base64.b64decode(raw_image_base64)
+                with open(path_file_gambar, "wb") as fh:
+                    fh.write(image_bytes)
+                url_gambar_aman = f"{URL_PREVIEW}/images/{gambar}"
+                print(f"Berhasil merakit gambar secara lokal: {gambar} ({len(image_bytes)} bytes)")
+            except Exception as e:
+                print(f"Gagal merakit gambar base64 untuk file {gambar}: {e}")
         
-        # Merakit Meta Tag Open Graph secara dinamis dengan URL Gambar baru berbasis GitHub Pages
         og_meta_tags = f"""
     <meta property="og:type" content="article">
     <meta property="og:url" content="{url_preview_artikel}">
@@ -118,7 +111,6 @@ def build_site():
     <meta name="twitter:image" content="{url_gambar_aman}">
         """.strip()
         
-        # Proses replacement template tanpa mengganggu kurung kurawal CSS
         html_rendered = template_content
         html_rendered = html_rendered.replace("{og_meta}", og_meta_tags)
         html_rendered = html_rendered.replace("{judul}", html.escape(judul))
@@ -143,7 +135,6 @@ def build_site():
             "url_preview": url_preview_artikel,
             "url_tujuan": url_tujuan
         })
-        print(f"Generated: /berita/{slug}/")
 
     generate_index_page(generated_items)
     generate_sitemap(generated_items)
@@ -157,17 +148,12 @@ def generate_index_page(items):
     items_html = ""
     for item in items:
         items_html += f'<li><a href="{item["url_preview"]}">{item["judul"]}</a> ({item["tanggal"]})</li>\n'
-        
     index_content = f"""<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Asrama News - Preview Center</title>
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{URL_PREVIEW}/">
-    <meta property="og:title" content="My Asrama News - Preview Center">
-    <meta property="og:description" content="Portal direktori preview tautan berita resmi untuk lingkungan Asrama Universitas Trunojoyo Madura.">
     <style>
         body {{ font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }}
         h1 {{ color: #1e3a8a; }}
@@ -185,7 +171,6 @@ def generate_index_page(items):
     </ul>
 </body>
 </html>"""
-    
     with open(os.path.join(OUTPUT_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(index_content)
 
