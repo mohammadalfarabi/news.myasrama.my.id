@@ -43,9 +43,7 @@ def fetch_all_news():
         return all_news
         
     try:
-        # Karena data dikirim dalam bentuk string JSON ter-encode, kita decode di sini
-        import ast
-        # Bersihkan string membungkus jika ada double quotes dari YAML
+        # Hubungkan string membungkus jika ada double quotes dari YAML
         if raw_payload.startswith('"') and raw_payload.endswith('"'):
             raw_payload = json.loads(raw_payload)
             
@@ -89,15 +87,15 @@ def build_site():
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
         url_gambar_full = f"{IMAGE_BASE_URL}{gambar}"
         
-        html_rendered = template_content.format(
-            judul=html.escape(judul),
-            deskripsi=html.escape(potongan),
-            url_preview=url_preview_artikel,
-            url_gambar=url_gambar_full,
-            url_tujuan=url_tujuan,
-            tanggal=tanggal,
-            potongan_isi=html.escape(dapatkan_potongan_teks(isi, 250))
-        )
+        # Penggantian manual menggunakan .replace() agar aman dari kurung kurawal CSS
+        html_rendered = template_content
+        html_rendered = html_rendered.replace("{judul}", html.escape(judul))
+        html_rendered = html_rendered.replace("{deskripsi}", html.escape(potongan))
+        html_rendered = html_rendered.replace("{url_preview}", url_preview_artikel)
+        html_rendered = html_rendered.replace("{url_gambar}", url_gambar_full)
+        html_rendered = html_rendered.replace("{url_tujuan}", url_tujuan)
+        html_rendered = html_rendered.replace("{tanggal}", tanggal)
+        html_rendered = html_rendered.replace("{potongan_isi}", html.escape(dapatkan_potongan_teks(isi, 250)))
         
         artikel_dir = os.path.join(OUTPUT_DIR, "berita", slug)
         os.makedirs(artikel_dir, exist_ok=True)
