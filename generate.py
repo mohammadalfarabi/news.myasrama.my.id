@@ -2,7 +2,7 @@ import os
 import re
 import html
 import json
-import base64
+import urllib.request
 from datetime import datetime
 
 URL_UTAMA = "https://myasrama.my.id"
@@ -27,33 +27,47 @@ def fetch_all_news():
     raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "").strip()
     
     if not raw_payload or raw_payload == "null":
-        print("Payload kosong atau bernilai null.")
+        print("Payload kosong.")
         return all_news
         
     try:
-        # Penanganan ekstra jika data terbungkus string ganda oleh GitHub Environment
         if raw_payload.startswith('"') and raw_payload.endswith('"'):
             try:
                 raw_payload = json.loads(raw_payload)
             except:
-                # Jika gagal loads sebagai string, bersihkan tanda kutip manual
                 raw_payload = raw_payload[1:-1].replace('\\"', '"').replace('\\\\', '\\')
 
         news_data = json.loads(raw_payload)
-        
-        # Jika bungkus datanya berupa string JSON lagi di dalamnya
         if isinstance(news_data, str):
             news_data = json.loads(news_data)
             
         if isinstance(news_data, list):
             print(f"Berhasil memuat {len(news_data)} data berita dari payload.")
             return news_data
-            
     except Exception as e:
-        print(f"Gagal memparsing payload berita: {e}")
-        # Cetak sedikit cuplikan payload untuk mempermudah debugging di log GitHub
-        print(f"Cuplikan awal payload: {raw_payload[:200]}")
+        print(f"Gagal memparsing payload: {e}")
     return all_news
+
+def download_gambar_bypass(nama_file, folder_tujuan):
+    """Mendownload gambar dari InfinityFree dengan bypass User-Agent agar tidak diblokir"""
+    url_sumber = f"{URL_UTAMA}/upload/berita/{nama_file}"
+    path_lokal = os.path.join(folder_tujuan, nama_file)
+    
+    # Fake header menyerupai browser Google Chrome asli
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+    }
+    
+    try:
+        req = urllib.request.Request(url_sumber, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as response, open(path_lokal, 'wb') as out_file:
+            out_file.write(response.read())
+        print(f"✓ Berhasil mendownload & menyimpan gambar: {nama_file}")
+        return f"{URL_PREVIEW}/images/{nama_file}"
+    except Exception as e:
+        print(f"✗ Gagal mendownload {nama_file} lewat Python, menggunakan fallback URL utama. Error: {e}")
+        return url_sumber
 
 def build_site():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -71,7 +85,6 @@ def build_site():
         judul = item.get("judul")
         tanggal = item.get("tanggal")
         gambar = item.get("gambar")
-        raw_image_base64 = item.get("raw_image", "") 
         isi = item.get("isi", "")
         
         if not judul or not nid:
@@ -83,19 +96,10 @@ def build_site():
         url_tujuan = f"{URL_UTAMA}/berita/detail.php?id={nid}"
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
         
-        # PROSES MERAKIT GAMBAR DARI BASE64
+        # PROSES DOWNLOAD GAMBAR LANGSUNG BYPASS ANTI-BOT
         url_gambar_aman = f"{URL_UTAMA}/upload/berita/{gambar}" # Default fallback
-        if raw_image_base64:
-            try:
-                path_file_gambar = os.path.join(folder_gambar, gambar)
-                # Decode string base64 kembali menjadi file gambar biner
-                image_bytes = base64.b64decode(raw_image_base64)
-                with open(path_file_gambar, "wb") as fh:
-                    fh.write(image_bytes)
-                url_gambar_aman = f"{URL_PREVIEW}/images/{gambar}"
-                print(f"Berhasil merakit gambar secara lokal: {gambar} ({len(image_bytes)} bytes)")
-            except Exception as e:
-                print(f"Gagal merakit gambar base64 untuk file {gambar}: {e}")
+        if gambar:
+            url_gambar_aman = download_gambar_bypass(gambar, folder_gambar)
         
         og_meta_tags = f"""
     <meta property="og:type" content="article">
