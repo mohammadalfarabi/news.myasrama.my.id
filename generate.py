@@ -125,6 +125,10 @@ def build_site():
     # 4. Buat robots.txt
     generate_robots_txt()
 
+    # 5. Buat berkas CNAME untuk mapping kustom domain di GitHub Pages
+    with open(os.path.join(OUTPUT_DIR, "CNAME"), "w", encoding="utf-8") as f:
+        f.write("news.myasrama.my.id")
+
 def generate_index_page(items):
     items_html = ""
     for item in items:
