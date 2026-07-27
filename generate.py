@@ -81,6 +81,8 @@ def build_site():
     <meta property="og:title" content="{html.escape(judul)}">
     <meta property="og:description" content="{html.escape(potongan)}">
     <meta property="og:image" content="{url_gambar_full}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{html.escape(judul)}">
     <meta name="twitter:description" content="{html.escape(potongan)}">
