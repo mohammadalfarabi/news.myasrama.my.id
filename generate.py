@@ -27,48 +27,40 @@ def dapatkan_potongan_teks(text, length=160):
 
 def fetch_all_news():
     """
-    Otomatis mengecek dan mendeteksi sendiri semua file JSON yang ada 
-    lewat perantara index.php yang mengembalikan array JSON ID berita.
+    Versi super tangguh: Otomatis mendeteksi file JSON baik format ID berupa 
+    string murni maupun integer dari API index.php server utama.
     """
     all_news = []
     
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        # Panggil endpoint yang barusan kita buat
         response = requests.get(DATA_NEWS_URL, headers=headers, timeout=15)
         
+        print(f"Status Cek Server: {response.status_code}")
+        
         if response.status_code == 200:
-            # Karena index.php mengembalikan array JSON, langsung kita load
-            news_ids = response.json() 
-            print(f"Sistem mendeteksi {len(news_ids)} file berita secara otomatis: {news_ids}")
+            raw_ids = response.json() 
+            # Pastikan semua ID diubah jadi string bersih dan tidak duplikat
+            news_ids = list(set([str(nid).strip() for nid in raw_ids if nid]))
+            print(f"Sistem mendeteksi {len(news_ids)} ID berita secara otomatis: {news_ids}")
             
-            # Download masing-masing data detail beritanya
             for nid in news_ids:
+                # Bersihkan ekstensi jika index.php tidak sengaja menyertakan '.json'
+                clean_id = nid.replace('.json', '')
+                target_url = f"{DATA_NEWS_URL}{clean_id}.json"
+                
                 try:
-                    res = requests.get(f"{DATA_NEWS_URL}{nid}.json", headers=headers, timeout=5)
+                    res = requests.get(target_url, headers=headers, timeout=5)
+                    print(f"Mengunduh {target_url} -> Status: {res.status_code}")
                     if res.status_code == 200:
                         all_news.append(res.json())
                 except Exception as e:
-                    print(f"Gagal mendownload berita ID {nid}: {e}")
+                    print(f"Gagal mengunduh berita ID {clean_id}: {e}")
             
             return all_news
     except Exception as e:
         print(f"Gagal melakukan scanning folder berita otomatis: {e}")
 
-    return all_news
-
-    # Fallback/Alternatif jika tidak ada index.json: 
-    # Anda bisa menaruh daftar ID statis atau mem-parsing HTML directory listing jika diizinkan server
-    # Di bawah ini adalah contoh hardcoded ID untuk validasi workflow internal developer
-    sample_ids = [1785069910] 
-    for nid in sample_ids:
-        try:
-            res = requests.get(f"{DATA_NEWS_URL}{nid}.json", timeout=5)
-            if res.status_code == 200:
-                all_news.append(res.json())
-        except Exception as e:
-            print(f"Gagal mengambil berita ID {nid}: {e}")
-            
     return all_news
 
 def build_site():
