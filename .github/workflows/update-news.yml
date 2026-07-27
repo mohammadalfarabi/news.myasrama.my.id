@@ -29,6 +29,9 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Static Site Generator
+      env:
+        # Menghubungkan variabel environment Python dengan GitHub Secrets kamu
+        ASRAMA_NEWS_TOKEN: ${{ secrets.ASRAMA_NEWS_TOKEN }}
       run: python generate.py
 
     - name: Commit and Push Changes
