@@ -2,7 +2,6 @@ import os
 import re
 import html
 import json
-import urllib.request
 from datetime import datetime
 
 URL_UTAMA = "https://myasrama.my.id"
@@ -48,31 +47,8 @@ def fetch_all_news():
         print(f"Gagal memparsing payload: {e}")
     return all_news
 
-def download_gambar_bypass(nama_file, folder_tujuan):
-    """Mendownload gambar dari InfinityFree dengan bypass User-Agent agar tidak diblokir"""
-    url_sumber = f"{URL_UTAMA}/upload/berita/{nama_file}"
-    path_lokal = os.path.join(folder_tujuan, nama_file)
-    
-    # Fake header menyerupai browser Google Chrome asli
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-    }
-    
-    try:
-        req = urllib.request.Request(url_sumber, headers=headers)
-        with urllib.request.urlopen(req, timeout=15) as response, open(path_lokal, 'wb') as out_file:
-            out_file.write(response.read())
-        print(f"✓ Berhasil mendownload & menyimpan gambar: {nama_file}")
-        return f"{URL_PREVIEW}/images/{nama_file}"
-    except Exception as e:
-        print(f"✗ Gagal mendownload {nama_file} lewat Python, menggunakan fallback URL utama. Error: {e}")
-        return url_sumber
-
 def build_site():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    folder_gambar = os.path.join(OUTPUT_DIR, "images")
-    os.makedirs(folder_gambar, exist_ok=True)
     
     with open("template.html", "r", encoding="utf-8") as f:
         template_content = f.read()
@@ -84,7 +60,7 @@ def build_site():
         nid = item.get("id")
         judul = item.get("judul")
         tanggal = item.get("tanggal")
-        gambar = item.get("gambar")
+        gambar = item.get("gambar") # Sekarang ini berisi URL penuh dari ImgBB
         isi = item.get("isi", "")
         
         if not judul or not nid:
@@ -96,10 +72,8 @@ def build_site():
         url_tujuan = f"{URL_UTAMA}/berita/detail.php?id={nid}"
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
         
-        # PROSES DOWNLOAD GAMBAR LANGSUNG BYPASS ANTI-BOT
-        url_gambar_aman = f"{URL_UTAMA}/upload/berita/{gambar}" # Default fallback
-        if gambar:
-            url_gambar_aman = download_gambar_bypass(gambar, folder_gambar)
+        # Jika properti gambar kosong, buat fallback ke logo default atau gambar kosong
+        url_gambar_aman = gambar if gambar else "https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png"
         
         og_meta_tags = f"""
     <meta property="og:type" content="article">
