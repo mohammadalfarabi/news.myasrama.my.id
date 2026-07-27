@@ -2,6 +2,7 @@ import os
 import re
 import html
 import json
+import requests
 from datetime import datetime
 
 # Konfigurasi Alamat URL Asrama UTM
@@ -22,16 +23,41 @@ def dapatkan_potongan_teks(text, length=160):
     if len(clean_text) <= length:
         return clean_text
     return clean_text[:length].rsplit(' ', 1)[0] + '...'
+
+def download_gambar_ke_github(url_sumber, nama_file):
+    """ Mengunduh gambar dari InfinityFree dan menyimpannya ke dalam folder docs/images/ agar terbebas dari blokir anti-bot """
+    folder_gambar = os.path.join(OUTPUT_DIR, "images")
+    os.makedirs(folder_gambar, exist_ok=True)
+    path_tujuan = os.path.join(folder_gambar, nama_file)
+    
+    # Memberikan User-Agent palsu agar tidak diblokir saat diunduh oleh GitHub Actions
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        print(f"-> [DOWNLOAD] Mencoba mengunduh gambar: {url_sumber}")
+        respon = requests.get(url_sumber, headers=headers, timeout=15)
+        if respon.status_code == 200:
+            with open(path_tujuan, "wb") as f:
+                f.write(respon.content)
+            print(f"-> [SUCCESS] Gambar berhasil disimpan ke GitHub: docs/images/{nama_file}")
+            return f"{URL_PREVIEW}/images/{nama_file}"
+        else:
+            print(f"-> [WARNING] Gagal mengunduh gambar. Kode Status: {respon.status_code}. Menggunakan fallback URL asal.")
+    except Exception as e:
+        print(f"-> [ERROR] Gagal mengunduh gambar karena: {e}")
+        
+    return url_sumber
     
 def fetch_all_news():
-    """ Mengambil data berita langsung dari payload kiriman otomatis GitHub Actions """
     all_news = []
     raw_payload = os.environ.get("RAW_PAYLOAD_DATA", "")
     
     print("-> [LOG] Memulai fungsi fetch_all_news() via Payload...")
     
     if not raw_payload or raw_payload == "null":
-        print("-> [WARNING] Tidak ada data payload terdeteksi. Berjalan mode kosong.")
+        print("-> [WARNING] Tidak ada data payload terdeteksi.")
         return all_news
         
     try:
@@ -72,21 +98,24 @@ def build_site():
         
         url_tujuan = f"{URL_UTAMA}/berita/detail.php?id={nid}"
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
-        url_gambar_full = f"{IMAGE_BASE_URL}{gambar}"
+        url_gambar_sumber = f"{IMAGE_BASE_URL}{gambar}"
         
-        # Merakit Meta Tag Open Graph secara dinamis untuk WhatsApp / Media Sosial
+        # PROSES FIX: Unduh gambar ke server GitHub Pages & ganti URL tujuannya menuju GitHub Pages
+        url_gambar_aman = download_gambar_ke_github(url_gambar_sumber, gambar)
+        
+        # Merakit Meta Tag Open Graph secara dinamis dengan URL Gambar baru berbasis GitHub Pages
         og_meta_tags = f"""
     <meta property="og:type" content="article">
     <meta property="og:url" content="{url_preview_artikel}">
     <meta property="og:title" content="{html.escape(judul)}">
     <meta property="og:description" content="{html.escape(potongan)}">
-    <meta property="og:image" content="{url_gambar_full}">
+    <meta property="og:image" content="{url_gambar_aman}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{html.escape(judul)}">
     <meta name="twitter:description" content="{html.escape(potongan)}">
-    <meta name="twitter:image" content="{url_gambar_full}">
+    <meta name="twitter:image" content="{url_gambar_aman}">
         """.strip()
         
         # Proses replacement template tanpa mengganggu kurung kurawal CSS
@@ -95,7 +124,7 @@ def build_site():
         html_rendered = html_rendered.replace("{judul}", html.escape(judul))
         html_rendered = html_rendered.replace("{deskripsi}", html.escape(potongan))
         html_rendered = html_rendered.replace("{url_preview}", url_preview_artikel)
-        html_rendered = html_rendered.replace("{url_gambar}", url_gambar_full)
+        html_rendered = html_rendered.replace("{url_gambar}", url_gambar_aman)
         html_rendered = html_rendered.replace("{url_tujuan}", url_tujuan)
         html_rendered = html_rendered.replace("{tanggal}", tanggal)
         html_rendered = html_rendered.replace("{potongan_isi}", html.escape(dapatkan_potongan_teks(isi, 250)))
