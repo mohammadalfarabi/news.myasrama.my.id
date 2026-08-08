@@ -6,6 +6,11 @@ on:
 
   workflow_dispatch:
 
+# Mencegah bentrokan jika ada 2 trigger masuk secara bersamaan
+concurrency:
+  group: news-build-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -16,6 +21,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Mengambil riwayat Git lengkap agar rebase berjalan lancar
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -42,6 +49,8 @@ jobs:
 
           if ! git diff-index --quiet HEAD; then
             git commit -m "Auto Update: Berita My Asrama"
+            # Tarik commit terbaru terlebih dahulu sebelum push untuk menghindari lock error
+            git pull --rebase origin main
             git push origin main
           else
             echo "Tidak ada perubahan data berita baru ditemukan."
