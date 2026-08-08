@@ -1,68 +1,48 @@
 name: Sync & Generate News Preview
 
 on:
-repository_dispatch:
-types: [update_berita_otomatis]
+  repository_dispatch:
+    types: [update_berita_otomatis]
 
-workflow_dispatch:
+  workflow_dispatch:
 
 permissions:
-contents: write
+  contents: write
 
 jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
-build-and-deploy:
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-```
-runs-on: ubuntu-latest
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-steps:
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
 
-  - name: Checkout Repository
-    uses: actions/checkout@v4
+      - name: Run Static Site Generator via Payload
+        env:
+          RAW_PAYLOAD_DATA: ${{ github.event.client_payload.data_berita }}
+        run: |
+          python generate.py
 
+      - name: Commit and Push Changes back to Repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-  - name: Setup Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.10'
+          git add docs/
 
-
-  - name: Install Dependencies
-    run: |
-
-      python -m pip install --upgrade pip
-
-      pip install requests
-
-
-  - name: Run Static Site Generator via Payload
-    env:
-      RAW_PAYLOAD_DATA: ${{ github.event.client_payload.data_berita }}
-
-    run: |
-
-      python generate.py
-
-
-  - name: Commit and Push Changes back to Repository
-    run: |
-
-      git config --global user.name "github-actions[bot]"
-
-      git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      git add docs/
-
-      if ! git diff-index --quiet HEAD; then
-
-        git commit -m "Auto Update: Berita My Asrama"
-
-        git push origin main
-
-      else
-
-        echo "Tidak ada perubahan data berita baru ditemukan."
-
-      fi
-```
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Auto Update: Berita My Asrama"
+            git push origin main
+          else
+            echo "Tidak ada perubahan data berita baru ditemukan."
+          fi
