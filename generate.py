@@ -2,6 +2,7 @@ import os
 import re
 import html
 import json
+import random
 from datetime import datetime
 
 # ============================================================
@@ -79,39 +80,60 @@ def fetch_all_news():
 # MEMBUAT REKOMENDASI
 # ============================================================
 
-def buat_rekomendasi_html(item, berita_list):
+def buat_rekomendasi_html(item, berita_list, max_rekomendasi=3):
     rekomendasi = item.get("rekomendasi", [])
+    selected_news = []
 
-    if not isinstance(rekomendasi, list) or not rekomendasi:
+    # Ambil ID berita yang sedang dibuka
+    current_id = str(item.get("id"))
+
+    # Kumpulkan semua berita lain (selain berita yang sedang dibuka)
+    other_news = [
+        news for news in berita_list 
+        if str(news.get("id")) != current_id and news.get("judul")
+    ]
+
+    if not other_news:
         return ""
 
-    berita_by_id = {
-        str(news.get("id")): news
-        for news in berita_list
-        if news.get("id") is not None
-    }
+    # 1. Cari berita berdasarkan ID di array "rekomendasi"
+    if isinstance(rekomendasi, list) and len(rekomendasi) > 0:
+        berita_by_id = {str(news.get("id")): news for news in other_news}
+        for id_rek in rekomendasi:
+            rek = berita_by_id.get(str(id_rek))
+            if rek:
+                selected_news.append(rek)
 
+    # 2. Jika rekomendasi kurang dari max_rekomendasi (misal < 3), isi dengan berita lain secara acak
+    if len(selected_news) < max_rekomendasi:
+        sisa_kuota = max_rekomendasi - len(selected_news)
+        
+        # Hindari berita yang sudah terpilih sebelumnya
+        existing_ids = {str(n.get("id")) for n in selected_news}
+        available_news = [n for n in other_news if str(n.get("id")) not in existing_ids]
+        
+        # Ambil acak sisa berita yang tersedia
+        if available_news:
+            fallback_news = random.sample(available_news, min(sisa_kuota, len(available_news)))
+            selected_news.extend(fallback_news)
+
+    if not selected_news:
+        return ""
+
+    # 3. Render Komponen HTML
     html_output = """
 <section class="rekomendasi-section">
-<h3 class="rekomendasi-title">Rekomendasi Berita Terkait</h3>
+<h3 class="rekomendasi-title">Rekomendasi Berita Lainnya</h3>
 <div class="rekomendasi-grid">
 """
 
-    for id_rek in rekomendasi:
-        rek = berita_by_id.get(str(id_rek))
-
-        if not rek:
-            continue
-
+    for rek in selected_news:
         rek_judul = rek.get("judul", "")
         rek_tanggal = rek.get("tanggal", "")
         rek_gambar = rek.get("gambar")
-
-        if not rek_judul:
-            continue
-
         rek_slug = buat_slug(rek_judul)
-        # Gunakan relative path agar aman dari tumpukan domain
+        
+        # Menggunakan link relatif aman
         rek_url = f"/berita/{rek_slug}/"
         rek_img = rek_gambar if rek_gambar else "https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png"
 
