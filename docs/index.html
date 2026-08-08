@@ -1,25 +1,166 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Asrama News - Preview Center</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-        h1 { color: #1e3a8a; }
-        a { color: #2563eb; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <h1>My Asrama News</h1>
-    <p>Direktori preview berita untuk sosial media Asrama UTM.</p>
-    <hr>
-    <h3>Berita Terbaru:</h3>
-    <ul>
-        <li><a href="https://news.myasrama.my.id/berita/workshop-content-creator-personal-branding/">Workshop Content Creator & Personal Branding</a> (2026-07-20)</li>
-<li><a href="https://news.myasrama.my.id/berita/pondasi-karya-2026/">Pondasi Karya 2026</a> (2026-08-07)</li>
 
-    </ul>
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1.0"
+>
+
+<title>Berita Asrama UTM</title>
+
+<meta
+    name="description"
+    content="Portal berita resmi Asrama UTM."
+>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    background: #f4f6f9;
+    color: #1e293b;
+    padding: 30px 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+}
+
+.header {
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.header p {
+    color: #64748b;
+}
+
+.news-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.news-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+        0 4px 20px rgba(0,0,0,.05);
+    transition:
+        transform .2s,
+        box-shadow .2s;
+}
+
+.news-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.08);
+}
+
+.news-card a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.news-card img {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    display: block;
+}
+
+.news-card-body {
+    padding: 18px;
+}
+
+.news-date {
+    color: #64748b;
+    font-size: .8rem;
+    margin-bottom: 8px;
+}
+
+.news-card h2 {
+    font-size: 1.05rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.news-card p {
+    color: #64748b;
+    font-size: .9rem;
+    line-height: 1.6;
+}
+
+@media(max-width:600px) {
+
+    body {
+        padding: 20px 12px;
+    }
+
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
+    .news-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <header class="header">
+
+        <h1>
+            Berita Asrama UTM
+        </h1>
+
+        <p>
+            Informasi dan berita terbaru
+            Asrama Universitas Trunojoyo Madura.
+        </p>
+
+    </header>
+
+    <main class="news-grid">
+
+        
+
+    </main>
+
+</div>
+
 </body>
+
 </html>
