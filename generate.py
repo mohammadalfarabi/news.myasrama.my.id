@@ -8,8 +8,8 @@ from datetime import datetime
 # KONFIGURASI
 # ============================================================
 
-URL_UTAMA = "[https://myasrama.my.id](https://myasrama.my.id)"
-URL_PREVIEW = "[https://news.myasrama.my.id](https://news.myasrama.my.id)"
+URL_UTAMA = "https://myasrama.my.id"
+URL_PREVIEW = "https://news.myasrama.my.id"
 
 OUTPUT_DIR = "docs"
 
@@ -51,7 +51,6 @@ def fetch_all_news():
         return all_news
 
     try:
-        # Kadang GitHub memberikan JSON dalam bentuk string yang ter-encode.
         if raw_payload.startswith('"') and raw_payload.endswith('"'):
             try:
                 raw_payload = json.loads(raw_payload)
@@ -64,7 +63,6 @@ def fetch_all_news():
 
         news_data = json.loads(raw_payload)
 
-        # Jika masih berupa string, decode sekali lagi.
         if isinstance(news_data, str):
             news_data = json.loads(news_data)
 
@@ -87,7 +85,6 @@ def buat_rekomendasi_html(item, berita_list):
     if not isinstance(rekomendasi, list) or not rekomendasi:
         return ""
 
-    # Buat index berdasarkan ID
     berita_by_id = {
         str(news.get("id")): news
         for news in berita_list
@@ -96,9 +93,7 @@ def buat_rekomendasi_html(item, berita_list):
 
     html_output = """
 <section class="rekomendasi-section">
-<h3 class="rekomendasi-title">
-    Rekomendasi Berita Terkait
-</h3>
+<h3 class="rekomendasi-title">Rekomendasi Berita Terkait</h3>
 <div class="rekomendasi-grid">
 """
 
@@ -116,8 +111,9 @@ def buat_rekomendasi_html(item, berita_list):
             continue
 
         rek_slug = buat_slug(rek_judul)
-        rek_url = f"{URL_PREVIEW}/berita/{rek_slug}/"
-        rek_img = rek_gambar if rek_gambar else "[https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png](https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png)"
+        # Gunakan relative path agar aman dari tumpukan domain
+        rek_url = f"/berita/{rek_slug}/"
+        rek_img = rek_gambar if rek_gambar else "https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png"
 
         html_output += f"""
     <a href="{html.escape(rek_url, quote=True)}" class="rekomendasi-card">
@@ -142,21 +138,12 @@ def buat_rekomendasi_html(item, berita_list):
 def build_site():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # --------------------------------------------------------
-    # BACA TEMPLATE
-    # --------------------------------------------------------
     with open("template.html", "r", encoding="utf-8") as f:
         template_content = f.read()
 
-    # --------------------------------------------------------
-    # AMBIL DATA
-    # --------------------------------------------------------
     berita_list = fetch_all_news()
     generated_items = []
 
-    # --------------------------------------------------------
-    # GENERATE SETIAP BERITA
-    # --------------------------------------------------------
     for item in berita_list:
         nid = item.get("id")
         judul = item.get("judul")
@@ -164,14 +151,18 @@ def build_site():
         gambar = item.get("gambar")
         isi = item.get("isi", "")
 
-        # Berita tanpa ID / judul dilewati.
         if not judul or not nid:
             continue
 
         slug = buat_slug(judul)
         potongan = dapatkan_potongan_teks(isi, 160)
+        
+        # Relative path untuk tautan internal
+        relative_url = f"/berita/{slug}/"
+        # Absolute URL khusus untuk Meta Tags / Open Graph
         url_preview_artikel = f"{URL_PREVIEW}/berita/{slug}/"
-        url_gambar_aman = gambar if gambar else "[https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png](https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png)"
+        
+        url_gambar_aman = gambar if gambar else "https://i.ibb.co.com/G4NGrYXh/logo-baru-asrama.png"
 
         og_meta_tags = f"""
 <meta property="og:type" content="article">
@@ -215,20 +206,15 @@ def build_site():
             "slug": slug,
             "tanggal": tanggal,
             "potongan": potongan,
+            "relative_url": relative_url,
             "url_preview": url_preview_artikel
         })
 
-    # --------------------------------------------------------
-    # GENERATE FILE TAMBAHAN
-    # --------------------------------------------------------
     generate_index_page(generated_items)
     generate_sitemap(generated_items)
     generate_rss(generated_items)
     generate_robots_txt()
 
-    # --------------------------------------------------------
-    # CNAME
-    # --------------------------------------------------------
     with open(os.path.join(OUTPUT_DIR, "CNAME"), "w", encoding="utf-8") as f:
         f.write("news.myasrama.my.id")
 
@@ -244,14 +230,15 @@ def build_site():
 def generate_index_page(items):
     items_html = ""
     for item in items:
+        # Menggunakan relative_url (/berita/slug/) untuk tautan di index.html
         items_html += f"""
-    <article>
+    <article class="news-card">
         <h2>
-            <a href="{html.escape(item['url_preview'], quote=True)}">
+            <a href="{html.escape(item['relative_url'], quote=True)}">
                 {html.escape(item['judul'])}
             </a>
         </h2>
-        <p>{html.escape(str(item['tanggal']))}</p>
+        <p class="date">{html.escape(str(item['tanggal']))}</p>
         <p>{html.escape(item['potongan'])}</p>
     </article>
     """
@@ -259,34 +246,53 @@ def generate_index_page(items):
     index_content = f"""<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Asrama News</title>
-<meta name="description" content="Berita terbaru My Asrama">
-<style>
-    body {{
-        font-family: Arial, sans-serif;
-        max-width: 900px;
-        margin: 40px auto;
-        padding: 20px;
-        background: #f4f6f9;
-        color: #2d3748;
-    }}
-    article {{
-        background: white;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-radius: 10px;
-    }}
-    a {{
-        color: #2563eb;
-        text-decoration: none;
-    }}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Asrama News</title>
+    <meta name="description" content="Berita terbaru My Asrama">
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f8fafc;
+            color: #1e293b;
+        }}
+        h1 {{
+            font-size: 2rem;
+            color: #0f172a;
+            margin-bottom: 24px;
+        }}
+        .news-card {{
+            background: white;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }}
+        .news-card h2 {{
+            margin: 0 0 8px 0;
+            font-size: 1.25rem;
+        }}
+        .news-card h2 a {{
+            color: #2563eb;
+            text-decoration: none;
+        }}
+        .news-card h2 a:hover {{
+            text-decoration: underline;
+        }}
+        .date {{
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }}
+    </style>
 </head>
 <body>
-<h1>My Asrama News</h1>
-{items_html}
+    <h1>My Asrama News</h1>
+    {items_html}
 </body>
 </html>
 """
@@ -302,7 +308,7 @@ def generate_sitemap(items):
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
 
     xml = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="[http://www.sitemaps.org/schemas/sitemap/0.9](http://www.sitemaps.org/schemas/sitemap/0.9)">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 """
 
     xml += f"""
@@ -338,7 +344,7 @@ def generate_rss(items):
 <rss version="2.0">
 <channel>
 <title>My Asrama News</title>
-<link>[https://news.myasrama.my.id](https://news.myasrama.my.id)</link>
+<link>https://news.myasrama.my.id</link>
 <description>Preview portal berita resmi My Asrama</description>
 """
 
