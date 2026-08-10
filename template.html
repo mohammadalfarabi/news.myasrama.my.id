@@ -126,8 +126,41 @@
             margin: 16px 0;
         }
 
+        /* --- IKLAN STATIS SMALLEST & UNOBTRUSIVE --- */
+        .ad-compact {
+            margin: 32px 0 16px 0;
+            padding-top: 20px;
+            border-top: 1px dashed #e2e8f0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ad-compact-link {
+            display: inline-block;
+            max-width: 320px; /* Membatasi lebar agar tetap mungil */
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            opacity: 0.88;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .ad-compact-link:hover {
+            opacity: 1;
+            transform: scale(1.01);
+        }
+
+        .ad-compact-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            border: 1px solid #f1f5f9;
+        }
+        /* ------------------------------------------- */
+
         .rekomendasi-section {
-            margin-top: 48px;
+            margin-top: 32px;
             padding-top: 32px;
             border-top: 1px solid #e2e8f0;
         }
@@ -211,6 +244,10 @@
             .rekomendasi-grid {
                 grid-template-columns: 1fr;
             }
+
+            .ad-compact-link {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -218,7 +255,6 @@
 
 <div class="news-container">
 
-    <!-- Berpindah menggunakan path murni untuk menghindari bentrokan URL -->
     <a href="https://myasrama.my.id/berita/index.php" class="back-link">
         ← Kembali ke Daftar Berita
     </a>
@@ -236,6 +272,14 @@
         <div class="detail-content">
             {isi}
         </div>
+
+        <!-- ================= IKLAN KECIL / MINIMALIS ================= -->
+        <div class="ad-compact">
+            <a href="https://cekloh.netlify.app" target="_blank" rel="noopener noreferrer" class="ad-compact-link" title="Cek Plagiasi Cekloh">
+                <img src="https://i.ibb.co.com/Lz39bw6z/c6743482-73a1-4543-99f6-eef9a977fbed.jpg" alt="Cekloh Cek Plagiasi" class="ad-compact-img">
+            </a>
+        </div>
+        <!-- ========================================================== -->
 
         {rekomendasi}
     </article>
