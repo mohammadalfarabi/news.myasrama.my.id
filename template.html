@@ -249,6 +249,84 @@
                 max-width: 100%;
             }
         }
+
+        /* ================= POPUP IKLAN UTL.MY.ID ================= */
+.utl-popup {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 180px;
+    aspect-ratio: 1 / 1;
+    z-index: 9999;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+    animation: utlPopupIn 0.4s ease;
+}
+
+.utl-popup a {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.utl-popup img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.utl-popup-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 25px;
+    height: 25px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
+    font-size: 16px;
+    line-height: 25px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 2;
+    padding: 0;
+}
+
+.utl-popup-close:hover {
+    background: #0f172a;
+}
+
+@keyframes utlPopupIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 640px) {
+    .utl-popup {
+        width: 145px;
+        right: 12px;
+        bottom: 12px;
+        border-radius: 12px;
+    }
+
+    .utl-popup-close {
+        width: 22px;
+        height: 22px;
+        line-height: 22px;
+        font-size: 14px;
+    }
+}
+/* ======================================================= */
     </style>
 </head>
 <body>
@@ -285,6 +363,27 @@
     </article>
 
 </div>
+<div class="utl-popup" id="utlPopup">
 
+    <button
+        type="button"
+        class="utl-popup-close"
+        onclick="document.getElementById('utlPopup').style.display='none'"
+        aria-label="Tutup iklan">
+        ×
+    </button>
+
+    <a
+        href="https://utl.my.id"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Pendekkan URL Gratis di utl.my.id">
+
+        <img
+            src="https://i.ibb.co.com/wh1zcBqN/Gemini-Generated-Image-ve2khjve2khjve2k.png"
+            alt="utl.my.id - Pemendek URL Gratis">
+
+    </a>
+</div>
 </body>
 </html>
